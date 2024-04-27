@@ -6,6 +6,8 @@ const session = require('express-session');
 const RedisStore = require('connect-redis')(session);
 const redis = require('redis');
 const { producer } = require('./kafka');
+const crypto = require('crypto');
+const { encryptMessage, decryptMessage } = require('./encryption');
 
 const app = express();
 const server = http.createServer(app);
@@ -18,6 +20,17 @@ server.listen(PORT, () => {
 // Middleware
 app.use(express.json());
 
+// Secret Key Generation
+function generateSecretKey(length) {
+    return crypto.randomBytes(Math.ceil(length / 2))
+        .toString('hex')
+        .slice(0, length);
+}
+
+const secretKey = generateSecretKey(32);
+console.log('Generated secret key:', secretKey);
+
+
 // Create a Redis client for session management
 const redisClient = redis.createClient({
     // Specify your Redis configuration here (e.g., host, port)
@@ -29,7 +42,7 @@ const redisClient = redis.createClient({
 // Set up session middleware with Redis store
 app.use(session({
     store: new RedisStore({ client: redisClient }),
-    secret: 'your_session_secret', // Replace with your own secret
+    secret: 'secretKey',
     resave: false,
     saveUninitialized: false,
     cookie: {
@@ -119,19 +132,21 @@ app.delete('/users/:id', async (req, res) => {
     }
 });
 
-
 // Route for sending messages to Kafka
 app.post('/messages', (req, res) => {
     try {
         // Extract senderId, receiverId, and messageContent from request body
         const { senderId, receiverId, messageContent } = req.body;
 
-        // Store the message in Redis for caching
-        redisClient.set(`message:${senderId}:${receiverId}`, messageContent);
+        // Encrypt the message
+        const encryptedMessage = encryptMessage(messageContent, 'secretKey');
+
+        // Store the encrypted message in Redis for caching
+        redisClient.set(`message:${senderId}:${receiverId}`, encryptedMessage);
 
         // Produce the message to Kafka
         const payloads = [
-            { topic: 'messages', messages: JSON.stringify({ senderId, receiverId, messageContent }) }
+            { topic: 'messages', messages: JSON.stringify({ senderId, receiverId, encryptedMessage }) }
         ];
         producer.send(payloads, (error, data) => {
             if (error) {
