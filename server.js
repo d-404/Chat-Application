@@ -2,8 +2,9 @@ const express = require('express');
 const http = require('http');
 const { pool } = require('./db');
 const bcrypt = require('bcryptjs');
-
-const { promisify } = require('util');
+const session = require('express-session');
+const RedisStore = require('connect-redis')(session);
+const redis = require('redis');
 const { producer } = require('./kafka');
 
 const app = express();
@@ -17,7 +18,25 @@ server.listen(PORT, () => {
 // Middleware
 app.use(express.json());
 
-const { v4: uuidv4 } = require('uuid');
+// Create a Redis client for session management
+const redisClient = redis.createClient({
+    // Specify your Redis configuration here (e.g., host, port)
+    // For local development, you might use default values:
+    // host: 'localhost',
+    // port: 6379,
+});
+
+// Set up session middleware with Redis store
+app.use(session({
+    store: new RedisStore({ client: redisClient }),
+    secret: 'your_session_secret', // Replace with your own secret
+    resave: false,
+    saveUninitialized: false,
+    cookie: {
+        secure: false,
+        maxAge: 3600000,
+    },
+}));
 
 // Signup route
 app.post('/signup', async (req, res) => {
@@ -48,6 +67,8 @@ app.post('/login', async (req, res) => {
         if (!isValidPassword) {
             return res.status(401).json({ error: 'Invalid password' });
         }
+        // Set user session
+        req.session.userId = user.id;
         res.json({ message: 'Login successful' });
     } catch (error) {
         console.error('Error during login:', error);
@@ -104,6 +125,9 @@ app.post('/messages', (req, res) => {
     try {
         // Extract senderId, receiverId, and messageContent from request body
         const { senderId, receiverId, messageContent } = req.body;
+
+        // Store the message in Redis for caching
+        redisClient.set(`message:${senderId}:${receiverId}`, messageContent);
 
         // Produce the message to Kafka
         const payloads = [

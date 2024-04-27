@@ -18,7 +18,9 @@
   "homepage": "https://github.com/d-404/Chat-Application#readme",
   "dependencies": {
     "bcryptjs": "^2.4.3",
+    "connect-redis": "^7.1.1",
     "express": "^4.19.2",
+    "express-session": "^1.18.0",
     "jsonwebtoken": "^9.0.2",
     "pg": "^8.11.5",
     "redis": "^4.6.13",
