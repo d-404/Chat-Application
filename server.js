@@ -2,7 +2,9 @@ const express = require('express');
 const http = require('http');
 const { pool } = require('./db');
 const bcrypt = require('bcryptjs');
-const { storeMessage } = require('./messageController');
+
+const { promisify } = require('util');
+const { producer } = require('./kafka');
 
 const app = express();
 const server = http.createServer(app);
@@ -14,6 +16,8 @@ server.listen(PORT, () => {
 
 // Middleware
 app.use(express.json());
+
+const { v4: uuidv4 } = require('uuid');
 
 // Signup route
 app.post('/signup', async (req, res) => {
@@ -94,12 +98,26 @@ app.delete('/users/:id', async (req, res) => {
     }
 });
 
-// Route for sending messages
-app.post('/messages', async (req, res) => {
+
+// Route for sending messages to Kafka
+app.post('/messages', (req, res) => {
     try {
+        // Extract senderId, receiverId, and messageContent from request body
         const { senderId, receiverId, messageContent } = req.body;
-        await storeMessage(senderId, receiverId, messageContent);
-        res.status(201).json({ message: 'Message sent successfully' });
+
+        // Produce the message to Kafka
+        const payloads = [
+            { topic: 'messages', messages: JSON.stringify({ senderId, receiverId, messageContent }) }
+        ];
+        producer.send(payloads, (error, data) => {
+            if (error) {
+                console.error('Error producing message to Kafka:', error);
+                res.status(500).json({ error: 'An error occurred while sending the message' });
+            } else {
+                console.log('Message sent to Kafka:', data);
+                res.status(201).json({ message: 'Message sent successfully' });
+            }
+        });
     } catch (error) {
         console.error('Error sending message:', error);
         res.status(500).json({ error: 'An error occurred while sending the message' });
