@@ -1,0 +1,25 @@
+{
+  "name": "chat-app",
+  "version": "0.0.1",
+  "description": "Chat Application which allows one-to-one private chat.",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/d-404/Chat-Application.git"
+  },
+  "author": "Souvik",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/d-404/Chat-Application/issues"
+  },
+  "homepage": "https://github.com/d-404/Chat-Application#readme",
+  "dependencies": {
+    "bcryptjs": "^2.4.3",
+    "express": "^4.19.2",
+    "jsonwebtoken": "^9.0.2",
+    "pg": "^8.11.5"
+  }
+}
