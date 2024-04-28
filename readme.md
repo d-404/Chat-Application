@@ -16,7 +16,7 @@
 
 ## Introduction
 
-- The project aims to develop a chat application backend using Node.js, PostgreSQL for database management, Redis for session management and  message caching, and Kafka for handling real-time message delivery. It provides RESTful API endpoints for user authentication, message sending, user management, and more. The backend is designed to be scalable, secure, and efficient, allowing users to communicate seamlessly in real-time while ensuring data integrity and privacy.
+- The project aims to develop a chat application backend using Node.js, PostgreSQL for database management, Redis for session management and message caching, and Kafka for handling real-time message delivery. It provides RESTful API endpoints for user authentication, message sending, user management, and more. The backend is designed to be scalable, secure, and efficient, allowing users to communicate seamlessly in real-time while ensuring data integrity and privacy.
 
 
 ## Features
