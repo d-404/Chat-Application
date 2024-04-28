@@ -8,9 +8,13 @@ const redis = require('redis');
 const { producer } = require('./kafka');
 const crypto = require('crypto');
 const { encryptMessage, decryptMessage } = require('./encryption');
+const setupWebSocketServer = require('./websocket');
 
 const app = express();
 const server = http.createServer(app);
+
+// Set up WebSocket server
+setupWebSocketServer(server);
 
 const PORT = process.env.PORT || 3000;
 server.listen(PORT, () => {
