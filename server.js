@@ -33,10 +33,8 @@ console.log('Generated secret key:', secretKey);
 
 // Create a Redis client for session management
 const redisClient = redis.createClient({
-    // Specify your Redis configuration here (e.g., host, port)
-    // For local development, you might use default values:
-    // host: 'localhost',
-    // port: 6379,
+    host: 'localhost',
+    port: 6379,
 });
 
 // Set up session middleware with Redis store
