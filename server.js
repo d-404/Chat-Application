@@ -6,11 +6,10 @@ const { kafkaProducer } = require('./kafkaIntegration');
 const setupRedis = require('./redisSetup');
 const { pool } = require('./databaseConnection');
 
-const setupWebSocketServer = require('./websocket');
-
 const bcrypt = require('bcryptjs');
 const { encryptMessage } = require('./messageEncryption');
 const crypto = require('crypto');
+const WebSocket = require('ws');
 
 const RedisServer = require('connect-redis')(session);
 
@@ -19,17 +18,47 @@ const app = express();
 app.use(express.json());
 
 const { redisServer } = setupRedis();
+const wss = new WebSocket('ws://localhost:9090');
 
 const PORT = process.env.PORT || 9090;
 
-
 // Set up WebSocket server
 setupWebSocketServer(server);
+// Store connected clients
+const clients = new Set();
 
 server.listen(PORT, () => {
     console.log(`Server started : http://localhost:${PORT}`);
 });
 
+// Handle new WebSocket connections
+wss.on('connection', (wss) => {
+    console.log('Client connected');
+    clients.add(wss);
+
+    // Handle disconnection
+    ws.on('close', () => {
+        console.log('Client disconnected');
+        clients.delete(wss);
+    });
+});
+
+// Display notification or update user status
+wss.onmessage = (event) => {
+    const message = JSON.parse(event.data);
+    if (message.type === 'online') {
+        console.log(`User ${message.user} is online`);
+    }
+};
+
+// Function to send a notification to all connected clients
+function notifyClients(message) {
+    clients.forEach((client) => {
+        if (client.readyState === WebSocket.OPEN) {
+            client.send(JSON.stringify(message));
+        }
+    });
+}
 
 // Secret Key Generation
 function generateKey(size) {
@@ -38,6 +67,7 @@ function generateKey(size) {
         .slice(0, size);
 }
 const secret_KEY = generateKey(15);
+console.log(`Secret Key generated is : ` + secret_KEY);
 
 // Storing in Redis
 app.use(session({
@@ -130,7 +160,6 @@ app.put('/user/:id', async (req, res) => {
     }
 });
 
-// Route for sending messages to Kafka and storing in Redis cache
 app.post('/sendmessage', (req, res) => {
     try {
         // Encrypt the message
@@ -146,11 +175,13 @@ app.post('/sendmessage', (req, res) => {
         const payload = [
             { topic: 'mesage-topic', message: JSON.stringify({ sender_ID, receiver_ID, encryptedMsgToSend }) }
         ];
-        // Handle any erros
+        // Handle any errors
         kafkaProducer.send(payload, (error) => {
             if (error) {
                 res.status(500).json({ error: '!..Error occurred during sending message to Kafka..!' });
             } else {
+                // Notify clients that the sender is online
+                notifyClients({ type: 'online', user: sender_ID });
                 res.status(201).json({ message: 'Message sent to Kafka successfully!' });
             }
         });
