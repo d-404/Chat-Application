@@ -1,13 +1,13 @@
 const express = require('express');
 const http = require('http');
-const { pool } = require('./db');
+const { pool } = require('./databaseConnection');
 const bcrypt = require('bcryptjs');
 const session = require('express-session');
 const RedisStore = require('connect-redis')(session);
 const redis = require('redis');
-const { producer } = require('./kafka');
+const { producer } = require('./kafkaIntegration');
 const crypto = require('crypto');
-const { encryptMessage, decryptMessage } = require('./encryption');
+const { encryptMessage, decryptMessage } = require('./messageEncryption');
 const setupWebSocketServer = require('./websocket');
 
 const app = express();

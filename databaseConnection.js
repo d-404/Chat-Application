@@ -1,12 +1,12 @@
 const { Pool } = require('pg');
 
-// PostgreSQL Connection Pool
+// Creating a Postgres Connection
 const pool = new Pool({
     user: 'postgres',
     host: 'localhost',
-    database: 'postgres',
-    password: 'root',
-    port: 5432,
+    database: 'chatapp',
+    password: 'postgres',
+    port: 5444,
 });
 
 module.exports = { pool };
