@@ -1,134 +1,128 @@
 const express = require('express');
 const http = require('http');
-const { pool } = require('./databaseConnection');
-const bcrypt = require('bcryptjs');
 const session = require('express-session');
-const RedisStore = require('connect-redis')(session);
-const redis = require('redis');
-const { producer } = require('./kafkaIntegration');
-const crypto = require('crypto');
-const { encryptMessage, decryptMessage } = require('./messageEncryption');
+
+const { kafkaProducer } = require('./kafkaIntegration');
+const setupRedis = require('./redisSetup');
+const { pool } = require('./databaseConnection');
+
 const setupWebSocketServer = require('./websocket');
 
-const app = express();
+const bcrypt = require('bcryptjs');
+const { encryptMessage } = require('./messageEncryption');
+const crypto = require('crypto');
+
+const RedisServer = require('connect-redis')(session);
+
 const server = http.createServer(app);
+const app = express();
+app.use(express.json());
+
+const { redisServer } = setupRedis();
+
 
 // Set up WebSocket server
 setupWebSocketServer(server);
 
-const PORT = process.env.PORT || 3000;
+const PORT = process.env.PORT || 9090;
 server.listen(PORT, () => {
-    console.log(`Server is running on http://localhost:${PORT}`);
+    console.log(`Server started : http://localhost:${PORT}`);
 });
 
-// Middleware
-app.use(express.json());
 
 // Secret Key Generation
-function generateSecretKey(length) {
-    return crypto.randomBytes(Math.ceil(length / 2))
+function generateKey(size) {
+    return crypto.randomBytes(Math.floor(length / 2))
         .toString('hex')
-        .slice(0, length);
+        .slice(0, size);
 }
 
-const secretKey = generateSecretKey(32);
-console.log('Generated secret key:', secretKey);
-
-
-// Create a Redis client for session management
-const redisClient = redis.createClient({
-    host: 'localhost',
-    port: 6379,
-});
-
-// Set up session middleware with Redis store
+// Storing in Redis
 app.use(session({
-    store: new RedisStore({ client: redisClient }),
+    store: new RedisServer({ client: redisServer }),
     secret: 'secretKey',
-    resave: false,
     saveUninitialized: false,
     cookie: {
-        secure: false,
-        maxAge: 3600000,
+        secure: true,
+        maxAge: 720000,
     },
 }));
 
-// Signup route
-app.post('/signup', async (req, res) => {
+// Registration of an user
+app.post('/register', async (req, res) => {
     try {
         const { email, password } = req.body;
-        const hashedPassword = await bcrypt.hash(password, 10);
-        const queryText = 'INSERT INTO users (email, password) VALUES ($1, $2) RETURNING *';
-        const { rows } = await pool.query(queryText, [email, hashedPassword]);
-        const user = rows[0];
-        res.status(201).json({ user });
+        const hashPwd = await bcrypt.hash(password, 12);
+        const query = 'INSERT INTO peoples (email, password) VALUES ($1, $2)';
+        const { registered } = await pool.query(query, [email, hashPwd]);
+        const people = registered[0];
+        res.status(201).json({ people });
     } catch (error) {
-        console.error('Error during signup:', error);
+        console.error('Registration of user failed!!', error);
         res.status(500).json({ error: error.message });
     }
 });
 
-// Login route
+// Existing user login with valid credentials
 app.post('/login', async (req, res) => {
     try {
         const { email, password } = req.body;
-        const queryText = 'SELECT * FROM users WHERE email = $1';
-        const { rows } = await pool.query(queryText, [email]);
-        const user = rows[0];
-        if (!user) {
-            return res.status(404).json({ error: 'User not found' });
+        const queryText = 'SELECT * FROM peoples WHERE email = $1';
+        const { loggedIn } = await pool.query(queryText, [email]);
+        const people = loggedIn[0];
+        if (!people) {
+            return res.status(404).json({ error: 'Invalid User!!' });
         }
-        const isValidPassword = await bcrypt.compare(password, user.password);
-        if (!isValidPassword) {
-            return res.status(401).json({ error: 'Invalid password' });
+        const validPwd = await bcrypt.compare(password, people.password);
+        if (!validPwd) {
+            return res.status(401).json({ error: 'Password Incorrect' });
         }
-        // Set user session
-        req.session.userId = user.id;
-        res.json({ message: 'Login successful' });
+        req.session.userId = people.id;
+        res.json({ message: 'User successfully loggd in..' });
     } catch (error) {
-        console.error('Error during login:', error);
+        console.error('Error in login:', error);
         res.status(500).json({ error: error.message });
     }
 });
 
-// Fetch User Information
-app.get('/users/:id', async (req, res) => {
+// Getting the details of a vaild user
+app.get('/user/:id', async (req, res) => {
     try {
         const userId = req.params.id;
-        const queryText = 'SELECT * FROM users WHERE id = $1';
-        const { rows } = await pool.query(queryText, [userId]);
-        const user = rows[0];
-        if (!user) {
-            return res.status(404).json({ error: 'User not found' });
+        const query = 'SELECT * FROM peoples WHERE id = $1';
+        const { fetched } = await pool.query(query, [userId]);
+        const people = fetched[0];
+        if (!people) {
+            return res.status(404).json({ error: 'Invalid user!!' });
         }
-        res.json({ user });
-    } catch (error) {
-        res.status(500).json({ error: error.message });
-    }
-});
-
-// Update User Details
-app.put('/users/:id', async (req, res) => {
-    try {
-        const userId = req.params.id;
-        const { email, password } = req.body;
-        const hashedPassword = await bcrypt.hash(password, 10);
-        const queryText = 'UPDATE users SET email = $1, password = $2 WHERE id = $3 RETURNING *';
-        const { rows } = await pool.query(queryText, [email, hashedPassword, userId]);
-        const user = rows[0];
-        res.json({ user });
+        res.json({ people });
     } catch (error) {
         res.status(500).json({ error: error.message });
     }
 });
 
 // Delete User Account
-app.delete('/users/:id', async (req, res) => {
+app.delete('/user/:id', async (req, res) => {
     try {
         const userId = req.params.id;
-        const queryText = 'DELETE FROM users WHERE id = $1';
-        await pool.query(queryText, [userId]);
+        const query = 'DELETE FROM peoples WHERE id = $1';
+        await pool.query(query, [userId]);
         res.json({ message: 'User deleted successfully' });
+    } catch (error) {
+        res.status(500).json({ error: error.message });
+    }
+});
+
+// Update the details of an existing user
+app.put('/user/:id', async (req, res) => {
+    try {
+        const userId = req.params.id;
+        const { email, password } = req.body;
+        const hashPwd = await bcrypt.hash(password, 12);
+        const query = 'UPDATE peoples SET email = $1, password = $2 WHERE id = $3';
+        const { updated } = await pool.query(query, [email, hashPwd, userId]);
+        const people = updated[0];
+        res.json({ people });
     } catch (error) {
         res.status(500).json({ error: error.message });
     }
@@ -144,13 +138,13 @@ app.post('/messages', (req, res) => {
         const encryptedMessage = encryptMessage(messageContent, 'secretKey');
 
         // Store the encrypted message in Redis for caching
-        redisClient.set(`message:${senderId}:${receiverId}`, encryptedMessage);
+        redisServer.set(`message:${senderId}:${receiverId}`, encryptedMessage);
 
         // Produce the message to Kafka
         const payloads = [
             { topic: 'messages', messages: JSON.stringify({ senderId, receiverId, encryptedMessage }) }
         ];
-        producer.send(payloads, (error, data) => {
+        kafkaProducer.send(payloads, (error, data) => {
             if (error) {
                 console.error('Error producing message to Kafka:', error);
                 res.status(500).json({ error: 'An error occurred while sending the message' });

@@ -3,7 +3,7 @@ const request = require('supertest');
 
 
 // This method is to test the sign up of a new user.
-describe('POST /signup', () => {
+describe('POST /register', () => {
     it('this should register a new user on the app', async () => {
         const response = await request(app)
             .post('/signup')
@@ -46,11 +46,11 @@ describe('POST /login', () => {
 
 
 // Fetch the details of an existing user
-describe('GET /users/:id', () => {
+describe('GET /user/:id', () => {
     it('this should return user details if an user login with valid credentials', async () => {
         const userId = 1;
         const response = await request(app)
-            .get(`/users/${userId}`);
+            .get(`/user/${userId}`);
         expect(response.status).toBe(200);
         expect(response.body).toHaveProperty('user');
         expect(response.body.user.id).toBe(userId);
@@ -60,7 +60,7 @@ describe('GET /users/:id', () => {
     it('this should return 404 if the user id is invalid', async () => {
         const invalidUserId = 9999;
         const response = await request(app)
-            .get(`/users/${invalidUserId}`);
+            .get(`/user/${invalidUserId}`);
         expect(response.status).toBe(404);
         expect(response.body).toHaveProperty('error', 'User unavailable');
     });
@@ -68,13 +68,13 @@ describe('GET /users/:id', () => {
 
 
 // Update the details of an existing user.
-describe('PUT /users/:id', () => {
+describe('PUT /user/:id', () => {
     it('this should update the exixting user details if a valid user ID is entered', async () => {
         const userId = 1;
         const updatedEmail = 'john1234@yahoo.com';
         const updatedPassword = 'Password@987654';
         const response = await request(app)
-            .put(`/users/${userId}`)
+            .put(`/user/${userId}`)
             .send({ email: updatedEmail, password: updatedPassword });
         expect(response.status).toBe(200);
         expect(response.body).toHaveProperty('user');
@@ -84,11 +84,11 @@ describe('PUT /users/:id', () => {
 
 
 // Delete an existing user 
-describe('DELETE /users/:id', () => {
+describe('DELETE /user/:id', () => {
     it('this should delete an user account if vaild user details are available', async () => {
         const userId = 1;
         const response = await request(app)
-            .delete(`/users/${userId}`);
+            .delete(`/user/${userId}`);
         expect(response.status).toBe(200);
         expect(response.body).toHaveProperty('message', 'Successfully Deleted USer!');
     });
@@ -105,13 +105,13 @@ describe('DELETE /users/:id', () => {
 
 
 // Send messages to Redis and Kafka
-describe('POST /messages', () => {
+describe('POST /message', () => {
     it('this should push a message to Kafka and also store the message in Redis cache', async () => {
         const senderId = 1;
         const receiverId = 2;
         const messageContent = 'Hello World 1234567890';
         const response = await request(app)
-            .post('/messages')
+            .post('/message')
             .send({ senderId, receiverId, messageContent });
         expect(response.status).toBe(201);
         expect(response.body).toHaveProperty('message', 'Message sent successfully!');
@@ -120,10 +120,10 @@ describe('POST /messages', () => {
 
 
 // Invalid Sender ID or Receiver ID
-describe('POST /messages', () => {
+describe('POST /message', () => {
     it('should return 400 if senderId or receiverId is missing', async () => {
         const response = await request(app)
-            .post('/messages')
+            .post('/message')
             .send({ messageContent: 'Hello World 1234567890' });
         expect(response.status).toBe(400);
         expect(response.body).toHaveProperty('error', 'Sender ID or Receiver ID Unavailable!');
@@ -132,7 +132,7 @@ describe('POST /messages', () => {
     // Empty messages
     it('should return 400 if messageContent is empty', async () => {
         const response = await request(app)
-            .post('/messages')
+            .post('/message')
             .send({ senderId: 1, receiverId: 2, messageContent: '' });
         expect(response.status).toBe(400);
         expect(response.body).toHaveProperty('error', 'messageContent cannot be empty');
@@ -140,7 +140,7 @@ describe('POST /messages', () => {
 
     it('should return 404 if senderId or receiverId does not exist', async () => {
         const response = await request(app)
-            .post('/messages')
+            .post('/message')
             .send({ senderId: 999, receiverId: 888, messageContent: 'Hello World 1234567890' });
         expect(response.status).toBe(404);
         expect(response.body).toHaveProperty('error', 'Recepient or Sender Unavailable!');
