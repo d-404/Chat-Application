@@ -119,6 +119,7 @@ describe('POST /messages', () => {
 });
 
 
+// Invalid Sender ID or Receiver ID
 describe('POST /messages', () => {
     it('should return 400 if senderId or receiverId is missing', async () => {
         const response = await request(app)
@@ -128,6 +129,7 @@ describe('POST /messages', () => {
         expect(response.body).toHaveProperty('error', 'Sender ID or Receiver ID Unavailable!');
     });
 
+    // Empty messages
     it('should return 400 if messageContent is empty', async () => {
         const response = await request(app)
             .post('/messages')
