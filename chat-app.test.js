@@ -97,7 +97,7 @@ describe('DELETE /user/:id', () => {
     it('this should return 404 if vaild user details are unavailable', async () => {
         const invalidUserId = 9999;
         const response = await request(app)
-            .delete(`/users/${invalidUserId}`);
+            .delete(`/user/${invalidUserId}`);
         expect(response.status).toBe(404);
         expect(response.body).toHaveProperty('error', 'User not found!');
     });
@@ -105,13 +105,13 @@ describe('DELETE /user/:id', () => {
 
 
 // Send messages to Redis and Kafka
-describe('POST /message', () => {
+describe('POST /sendmessage', () => {
     it('this should push a message to Kafka and also store the message in Redis cache', async () => {
         const senderId = 1;
         const receiverId = 2;
         const messageContent = 'Hello World 1234567890';
         const response = await request(app)
-            .post('/message')
+            .post('/sendmessage')
             .send({ senderId, receiverId, messageContent });
         expect(response.status).toBe(201);
         expect(response.body).toHaveProperty('message', 'Message sent successfully!');
@@ -120,10 +120,10 @@ describe('POST /message', () => {
 
 
 // Invalid Sender ID or Receiver ID
-describe('POST /message', () => {
+describe('POST /sendmessage', () => {
     it('should return 400 if senderId or receiverId is missing', async () => {
         const response = await request(app)
-            .post('/message')
+            .post('/sendmessage')
             .send({ messageContent: 'Hello World 1234567890' });
         expect(response.status).toBe(400);
         expect(response.body).toHaveProperty('error', 'Sender ID or Receiver ID Unavailable!');
@@ -132,7 +132,7 @@ describe('POST /message', () => {
     // Empty messages
     it('should return 400 if messageContent is empty', async () => {
         const response = await request(app)
-            .post('/message')
+            .post('/sendmessage')
             .send({ senderId: 1, receiverId: 2, messageContent: '' });
         expect(response.status).toBe(400);
         expect(response.body).toHaveProperty('error', 'messageContent cannot be empty');
@@ -140,7 +140,7 @@ describe('POST /message', () => {
 
     it('should return 404 if senderId or receiverId does not exist', async () => {
         const response = await request(app)
-            .post('/message')
+            .post('/sendmessage')
             .send({ senderId: 999, receiverId: 888, messageContent: 'Hello World 1234567890' });
         expect(response.status).toBe(404);
         expect(response.body).toHaveProperty('error', 'Recepient or Sender Unavailable!');
