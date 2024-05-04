@@ -103,7 +103,7 @@ app.get('/user/:id', async (req, res) => {
     }
 });
 
-// Delete User Account
+// Deleting an existing user
 app.delete('/user/:id', async (req, res) => {
     try {
         const userId = req.params.id;
@@ -130,22 +130,23 @@ app.put('/user/:id', async (req, res) => {
     }
 });
 
-// Route for sending messages to Kafka
+// Route for sending messages to Kafka and storing in Redis cache
 app.post('/sendmessage', (req, res) => {
     try {
-        // Extract sender_ID, receiver_ID, and messageContent from request body
-        const { sender_ID, receiver_ID, messageContent } = req.body;
-
         // Encrypt the message
         const encryptedMsgToSend = encryptMessage(messageContent, 'secret_KEY');
+
+        // Extract sender_ID, receiver_ID, and messageContent from request body
+        const { sender_ID, receiver_ID, messageContent } = req.body;
 
         // Store the encrypted message in Redis for caching
         redisServer.set(`message:${sender_ID}:${receiver_ID}`, encryptedMsgToSend);
 
-        // Produce the message to Kafka
+        // Push the message to Kafka
         const payload = [
             { topic: 'mesage-topic', message: JSON.stringify({ sender_ID, receiver_ID, encryptedMsgToSend }) }
         ];
+        // Handle any erros
         kafkaProducer.send(payload, (error) => {
             if (error) {
                 res.status(500).json({ error: '!..Error occurred during sending message to Kafka..!' });
