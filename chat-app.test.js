@@ -71,7 +71,7 @@ describe('GET /user/:id', () => {
 describe('PUT /user/:id', () => {
     it('this should update the exixting user details if a valid user ID is entered', async () => {
         const userId = 1;
-        const updatedEmail = 'john1234@yahoo.com';
+        const updatedEmail = 'john@gmail.com';
         const updatedPassword = 'Password@987654';
         const response = await request(app)
             .put(`/user/${userId}`)
@@ -90,7 +90,7 @@ describe('DELETE /user/:id', () => {
         const response = await request(app)
             .delete(`/user/${userId}`);
         expect(response.status).toBe(200);
-        expect(response.body).toHaveProperty('message', 'Successfully Deleted USer!');
+        expect(response.body).toHaveProperty('message', 'Successfully Deleted User!');
     });
 
     // User with invalid details

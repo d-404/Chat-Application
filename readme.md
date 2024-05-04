@@ -50,5 +50,5 @@ npm start
 
 ```bash
 # Set environment variables
-export PORT=3000
+export PORT=9090
 ```
